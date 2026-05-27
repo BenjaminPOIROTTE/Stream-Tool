@@ -1,14 +1,23 @@
 mod irc;
-use eframe::egui::Ui;
+mod twitch_irc;
+mod ui;
+
+
+use eframe::egui::{self, Ui};
 use tokio::runtime::Runtime;
 use tokio::sync::mpsc;
+use egui_extras;
+
 
 fn main() -> Result<(), eframe::Error> {
     let options = eframe::NativeOptions::default();
     eframe::run_native(
         "STREAM-TOOL",
         options,
-        Box::new(|_cc| Ok(Box::new(MyApp::new()))),
+        Box::new(|cc| {
+    egui_extras::install_image_loaders(&cc.egui_ctx); 
+    Ok(Box::new(MyApp::new()))
+}),
     )
 }
 
@@ -20,6 +29,7 @@ struct MyApp {
     messages: Vec<String>,
     rx: mpsc::Receiver<String>, 
     tx: mpsc::Sender<String>,
+    twitch_connected: bool,
 }
 
 
@@ -35,6 +45,7 @@ impl MyApp {
             messages: Vec::new(),
             rx,
             tx,
+            twitch_connected: false,
         }
     }
 }
@@ -47,41 +58,7 @@ impl Default for MyApp {
 }
 
 impl eframe::App for MyApp {
-    fn ui(&mut self, ui: &mut Ui, _frame: &mut eframe::Frame) {
-        ui.heading("STREAM-TOOL");
-        ui.separator();
-
-        ui.horizontal(|ui| {
-            ui.label("Token: ");
-            ui.text_edit_singleline(&mut self.token);
-        });
-        ui.separator();
-
-        ui.horizontal(|ui| {
-            ui.label("Channel: ");
-            ui.text_edit_singleline(&mut self.channel);
-        });
-        ui.separator();
-
-        
-        let btn_label = if self.connected { "Déconnecter" } else { "Connecter" };
-
-        if ui.button(btn_label).clicked() {
-            if !self.connected {
-                // Lance irc_main() dans une tâche async séparée
-                self.runtime.spawn(irc::irc_main());
-                self.connected = true;
-            }
-        }
-
-        if self.connected {
-            ui.label("Connecté à Twitch IRC...");
-        }
-
-        ui.separator();
-
-
-
-
+     fn ui(&mut self, ui: &mut Ui, _frame: &mut eframe::Frame) {
+        crate::ui::render(self, ui);  
     }
 }
